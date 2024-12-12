@@ -1,0 +1,13 @@
+{
+  "gate_distances": {
+    "AAO1 Київ-СE12 Львів": 700,
+    "СE12 Львів-MO32 Одеса": 650,
+    "HM12 Харків-AAO1 Київ": 250
+  },
+  "transport_rates": {
+    "car": 0.32,
+    "bus": 0.56,
+    "motorcycle": 0.21,
+    "truck": 1.21
+  }
+}

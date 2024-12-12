@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Перевірка оплати за номерним знаком</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h2, h3, h4 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            display: inline-block;
+            width: 200px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            padding: 5px;
+            width: 250px;
+        }
+        button {
+            padding: 5px 10px;
+            margin-top: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #999;
+            padding: 10px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .no-debts {
+            color: green;
+            font-style: normal;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h2>Перевірка оплати за номерним знаком</h2>
+        <form method="post" action="/checkbycar">
+            <label for="plate">Введіть номерний знак:</label>
+            <input type="text" id="plate" name="plate" required>
+            <button type="submit">Перевірити</button>
+        </form>
+
+        {% if plate %}
+        <div>
+            <h4>Номерний знак: {{ plate }}</h4>
+        </div>
+        {% endif %}
+
+        {% if unpaid_trips and unpaid_trips|length > 0 %}
+        <div>
+            <h3>Деталі несплачених поїздок:</h3>
+            <p>У вас є {{ unpaid_trips|length }} несплачена поїздка{{ unpaid_trips|length > 1 and 'ки' or '' }}.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Номер поїздки</th>
+                        <th>Тип транспортного засобу</th>
+                        <th>Вхідні ворота</th>
+                        <th>Вихідні ворота</th>
+                        <th>Час виходу</th>
+                        <th>Ціна (UAH)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trip in unpaid_trips %}
+                    <tr>
+                        <td>{{ trip.id }}</td>
+                        <td>{{ trip.transport_type }}</td>
+                        <td>{{ trip.entry_gate }}</td>
+                        <td>{{ trip.exit_gate }}</td>
+                        <td>{{ trip.exit_timestamp }}</td>
+                        <td>{{ "%.2f"|format(trip.price) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <form method="post" action="/pay_progress">
+                <input type="hidden" name="total_cost" value="{{ "%.2f"|format(total_cost) }}">
+                <input type="hidden" name="trip_ids" value="{{ unpaid_trips | map(attribute='id') | list | join(',') }}">
+                <button type="submit">Сплатити загальну суму: {{ "%.2f"|format(total_cost) }} UAH</button>
+            </form>
+        </div>
+        {% else %}
+        <div>
+            <h4 class="no-debts">Немає боргів за таким номерним знаком.</h4>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

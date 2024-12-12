@@ -1,0 +1,282 @@
+version: '3.8'
+
+services:
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    hostname: kafka
+    container_name: kafka_new
+    restart: always
+    environment:
+      KAFKA_KRAFT_MODE: "true"
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: "Mk3OEYBSD34fcwNTJENDM2Qk"
+    volumes:
+      - ./data:/var/lib/kafka/data
+    networks:
+      - service-network
+
+  api-for-cameras:
+    restart: always
+    build:
+      context: ./api_gate
+      dockerfile: Dockerfile
+    depends_on:
+      - kafka
+    ports:
+      - "5000:5000"
+    networks:
+      - service-network
+
+  redis:
+    image: redis:latest
+    restart: always
+    container_name: redis
+    networks:
+      - service-network
+
+  service-transport-in:
+    restart: always
+    build:
+      context: ./service-in
+      dockerfile: Dockerfile
+    depends_on:
+      - redis
+      - kafka
+    networks:
+      - service-network
+
+  service-transport-out:
+    restart: always
+    build:
+      context: ./service-out
+      dockerfile: Dockerfile
+    depends_on:
+      - redis
+      - kafka
+    networks:
+      - service-network
+
+  service-saga:
+    restart: always
+    build:
+      context: ./SAGA-service
+      dockerfile: Dockerfile
+    depends_on:
+      - kafka
+    networks:
+      - service-network
+
+  postgres-service1:
+    image: postgres:15
+    container_name: postgres-service1
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: trips_db
+    ports:
+      - "5432:5432"
+    networks:
+      - service-network
+    volumes:
+      - postgres_data1:/var/lib/postgresql/data
+
+  postgres-service2:
+    image: postgres:15
+    container_name: postgres-service2
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: payments_db
+    ports:
+      - "5433:5432"
+    networks:
+      - service-network
+    volumes:
+      - postgres_data2:/var/lib/postgresql/data
+
+  postgres-service3:
+    image: postgres:15
+    container_name: postgres-service3
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: users_db
+    ports:
+      - "5434:5432"
+    networks:
+      - service-network
+    volumes:
+      - postgres_data3:/var/lib/postgresql/data
+
+
+  elasticsearch-node1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: elasticsearch-node1
+    restart: always
+    environment:
+      - node.name=elasticsearch-node1
+      - cluster.name=es-cluster
+      - discovery.seed_hosts=elasticsearch-node1,elasticsearch-node2
+      - cluster.initial_master_nodes=elasticsearch-node1,elasticsearch-node2
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+    volumes:
+      - es_data_node1:/usr/share/elasticsearch/data
+    networks:
+      - service-network
+
+  elasticsearch-node2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: elasticsearch-node2
+    restart: always
+    environment:
+      - node.name=elasticsearch-node2
+      - cluster.name=es-cluster
+      - discovery.seed_hosts=elasticsearch-node1,elasticsearch-node2
+      - cluster.initial_master_nodes=elasticsearch-node1,elasticsearch-node2
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+    volumes:
+      - es_data_node2:/usr/share/elasticsearch/data
+    networks:
+      - service-network
+
+  service-trip:
+    restart: always
+    build:
+      context: ./trip-service
+      dockerfile: Dockerfile
+    depends_on:
+      - kafka
+    networks:
+      - service-network
+
+  cqrs-projector-service:
+    restart: always
+    build:
+      context: cqrs-projector
+      dockerfile: Dockerfile
+    depends_on:
+      - kafka
+      - elasticsearch-node1
+      - elasticsearch-node2
+    networks:
+      - service-network
+
+  service-kafka-payment:
+    restart: always
+    build:
+      context: ./payment-kafka-service
+      dockerfile: Dockerfile
+    depends_on:
+      - kafka
+    networks:
+      - service-network
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - service-network
+
+  payment_service:
+    restart: always
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres-service2
+    networks:
+      - service-network
+
+  get_trip_service:
+    build:
+      context: ./get_history_service
+      dockerfile: Dockerfile
+    depends_on:
+      - elasticsearch-node1
+      - elasticsearch-node2
+    networks:
+      - service-network
+
+  kong:
+    image: kong-with-circuit-breaker
+    environment:
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/kong-config/kong.yml
+      - KONG_PROXY_ACCESS_LOG=/dev/stdout
+      - KONG_ADMIN_ACCESS_LOG=/dev/stdout
+      - KONG_PROXY_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_ERROR_LOG=/dev/stderr
+      - KONG_PROXY_LISTEN=0.0.0.0:8000
+      - KONG_ADMIN_LISTEN=127.0.0.1:8001
+      - KONG_PLUGINS=bundled,circuit-breaker
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./kong-config:/kong-config
+    networks:
+      - service-network
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    restart: always
+    deploy:
+      replicas: 1
+    depends_on:
+      - postgres-service3
+      - kong
+    networks:
+      - service-network
+
+
+volumes:
+  postgres_data1:
+  postgres_data2:
+  postgres_data3:
+  es_data_node1:
+  es_data_node2:
+  redis_data:
+
+
+networks:
+  service-network:
+    driver: bridge

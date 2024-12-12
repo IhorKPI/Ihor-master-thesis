@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment</title>
+</head>
+<body>
+    <h1>Зробити оплату</h1>
+    <form action="/user/pay_progress" method="post">
+
+        <input type="hidden" name="total_cost" value="{{ total_cost }}">
+        <input type="hidden" name="trip_ids" value="{{ trip_ids }}">
+        <label for="payment_method">Метод оплати:</label>
+        <select name="payment_method" id="payment_method" required>
+            <option value="credit_card">Кредитна карта</option>
+            <option value="paypal">PayPal</option>
+            <option value="bank_transfer">Криптогаманець</option>
+        </select>
+
+        <button type="submit">Перейти до оплати</button>
+    </form>
+</body>
+</html>

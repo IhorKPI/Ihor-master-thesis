@@ -1,0 +1,95 @@
+_format_version: "3.0"
+
+services:
+  - name: user-service
+    url: http://user-service:5000
+    routes:
+      - name: admin-route
+        paths:
+          - /admin
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              cookie_names:
+                - access_token
+              claims_to_verify:
+                - exp
+
+          - name: acl
+            config:
+              allow:
+                - admin
+
+      - name: user-route
+        paths:
+          - /user
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              cookie_names:
+                - access_token
+              claims_to_verify:
+                - exp
+
+          - name: acl
+            config:
+              allow:
+                - user
+
+      - name: public-route
+        paths:
+          - /client
+          - /
+        strip_path: false
+
+plugins:
+  - name: rate-limiting
+    service: user-service
+    config:
+      second: 5
+
+  - name: circuit-breaker
+    service: user-service
+    config:
+      window_time: 10
+      min_calls_in_window: 20
+      failure_percent_threshold: 51
+      wait_duration_in_open_state: 15
+      wait_duration_in_half_open_state: 120
+      half_open_min_calls_in_window: 5
+      half_open_max_calls_in_window: 10
+      error_status_code: 503
+      excluded_apis: '{}'
+
+upstreams:
+  - name: user-service
+    targets:
+      - target: user-service:5000
+    healthchecks:
+      active:
+        http_path: /health
+        healthy:
+          interval: 10
+          successes: 2
+        unhealthy:
+          interval: 10
+          http_failures: 3
+
+consumers:
+  - username: admin-service
+    custom_id: admin-service-id
+    jwt_secrets:
+      - key: admin-service
+        secret: admin_secret_key
+    acls:
+      - group: admin
+
+  - username: user-service
+    custom_id: user-service-id
+    jwt_secrets:
+      - key: user-service
+        secret: user_secret_key
+    acls:
+      - group: user

@@ -1,0 +1,6 @@
+asyncio
+elasticsearch
+aiohttp
+fastapi
+uvicorn
+pydantic

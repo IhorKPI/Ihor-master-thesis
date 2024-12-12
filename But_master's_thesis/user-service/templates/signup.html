@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Реєстрація</title>
+</head>
+<body>
+    <h1>Реєстрація</h1>
+    <form action="/signup" method="post">
+        <label>Пошта:</label><br>
+        <input type="email" name="email" required><br>
+        <label>Ім'я:</label><br>
+        <input type="text" name="username" maxlength="50" required><br>
+        <label>Пароль:</label><br>
+        <input type="password" name="password" required><br><br>
+        <button type="submit">Зареєструватися</button>
+    </form>
+
+    <!-- Display error message if provided -->
+    {% if error %}
+    <p style="color: red;">{{ error }}</p>
+    {% endif %}
+</body>
+</html>

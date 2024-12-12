@@ -1,0 +1,31 @@
+<!-- templates/add_car.html -->
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Додати номер машини</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        form {
+            max-width: 400px;
+        }
+        label, input, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Додати номер машини для користувача {{ username }}</h2>
+    <form action="/user/add_car" method="post">
+        <label for="license_plate">Номер машини:</label>
+        <input type="text" id="license_plate" name="license_plate" required>
+        <button type="submit">Додати</button>
+    </form>
+    <a href="/user">Повернутися на панель користувача</a>
+</body>
+</html>

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+passlib
+PyJWT
+asyncpg
+Jinja2
+python-multipart
+httpx
+aiobcrypt

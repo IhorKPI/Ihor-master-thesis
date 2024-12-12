@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Панель користувача</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .header {
+            margin-bottom: 20px;
+        }
+        .buttons {
+            margin-bottom: 20px;
+        }
+        .buttons form {
+            display: inline;
+            margin-right: 10px;
+        }
+        .car {
+            margin-top: 20px;
+            border: 2px solid #333;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .car h3 {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .trip {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+        }
+        .trip.paid {
+            background-color: #e0ffe0;
+        }
+        .trip.unpaid {
+            background-color: #ffe0e0;
+        }
+        .payment-status.paid {
+            color: green;
+            font-weight: bold;
+        }
+        .payment-status.unpaid {
+            color: red;
+            font-weight: bold;
+        }
+        .no-unpaid {
+            color: green;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <div class="header">
+        <h2>Користувач: {{ username }}</h2>
+        <p>Пошта: {{ email }}</p>
+        {% if total_debt > 0 %}
+            <form action="/user/pay" method="post">
+                <input type="hidden" name="trip_ids" value="{{ all_unpaid_ids | join(',') }}">
+                <input type="hidden" name="total_cost" value="{{ total_debt }}">
+                <button type="submit">
+                    Заборгованість по машинах загальна: {{ total_debt }} грн
+                </button>
+            </form>
+        {% else %}
+            <p class="no-unpaid">Заборгованість відсутня</p>
+        {% endif %}
+    </div>
+
+    <!-- Buttons for Adding and Removing Cars -->
+    <div class="buttons">
+        <form action="/user/add_car" method="get">
+            <button type="submit">Додати номер машини</button>
+        </form>
+        <form action="/user/remove_car" method="get">
+            <button type="submit">Видалити номер машини</button>
+        </form>
+    </div>
+
+    <!-- Car and Trip Information -->
+    {% for plate, data in trips_by_plate.items() %}
+        <div class="car">
+            <h3>
+                Номер машини: {{ plate }}
+                {% if data.unpaid_cost > 0 %}
+                    <form action="/user/pay" method="post" style="margin-left: auto;">
+                        <input type="hidden" name="trip_ids" value="{{ data.unpaid_ids | join(',') }}">
+                        <input type="hidden" name="total_cost" value="{{ data.unpaid_cost }}">
+                        <button type="submit">Сплатити {{ data.unpaid_cost }} грн по номеру {{ plate }}</button>
+                    </form>
+                {% else %}
+                    <span class="no-unpaid">За даним номером немає заборгованості</span>
+                {% endif %}
+            </h3>
+
+            <!-- List of Trips -->
+            {% for trip in data.trips|sort(attribute="exit_timestamp") %}
+                <div class="trip {% if trip.status == 'paid' %}paid{% else %}unpaid{% endif %}">
+                    <p style="font-size: 12px;"><strong>Ідентифікатор:</strong> {{ trip.id }}</p>
+                    <p style="font-size: 12px;"><strong>Тип транспорту:</strong> {{ trip.transport_type }}</p>
+                    <p style="font-size: 12px;"><strong>Вхідний ворота:</strong> {{ trip.entry_gate }}</p>
+                    <p style="font-size: 12px;"><strong>Час входу:</strong> {{ trip.entry_timestamp }}</p>
+                    <p style="font-size: 12px;"><strong>Вихідний ворота:</strong> {{ trip.exit_gate }}</p>
+                    <p style="font-size: 12px;"><strong>Час виходу:</strong> {{ trip.exit_timestamp }}</p>
+                    <p style="font-size: 12px;"><strong>Відстань:</strong> {{ trip.distance }} км</p>
+                    <p style="font-size: 12px;"><strong>Вартість подорожі:</strong> {{ trip.price }} грн</p>
+                    <p class="payment-status {% if trip.status == 'paid' %}paid{% else %}unpaid{% endif %}">
+                        {% if trip.status == 'paid' %}
+                            Сплачено
+                        {% else %}
+                            Несплачено
+                        {% endif %}
+                    </p>
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+</body>
+</html>

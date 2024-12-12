@@ -1,0 +1,35 @@
+<!-- templates/remove_car.html -->
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Видалити номер машини</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        form {
+            max-width: 400px;
+        }
+        label, select, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Видалити номер машини для користувача {{ username }}</h2>
+    <form action="/user/remove_car" method="post">
+        <label for="license_plate">Виберіть номер машини для видалення:</label>
+        <select id="license_plate" name="license_plate" required>
+            {% for plate in plates %}
+                <option value="{{ plate }}">{{ plate }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Видалити</button>
+    </form>
+    <a href="/user">Повернутися на панель користувача</a>
+</body>
+</html>
